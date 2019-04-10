@@ -3,6 +3,7 @@
     <router-link class="c-game__item" :to="{name: game.url}" v-for="game in gameLists" :key="game.url" :style="{background: `url(${game.img}) no-repeat center/cover`}">
       <span class="c-game__name">{{game.name}}</span>
     </router-link>
+    432
   </div>
 </template>
 
