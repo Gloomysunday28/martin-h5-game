@@ -23,6 +23,7 @@ export default {
   name: 'MartinSnake',
   data() {
     return {
+      snakeUnit: 0, // 贪吃蛇单个半径
       showEndBox: false,
       width: 0,
       height: 0,
@@ -31,8 +32,8 @@ export default {
       ctx: null,
       direction: 'right',
       food: null,
-      foodIx: 0,
-      foodIy: 0,
+      foodIx: 0, // 食物初始化位置x
+      foodIy: 0, // 食物初始化位置y
       snakeBlocks: [], // 贪吃蛇
       head: null, // 蛇的头部
     }
@@ -43,30 +44,37 @@ export default {
     this.ctx = this.$refs.canvas.getContext('2d')
     this.$refs.canvas.width = this.width
     this.$refs.canvas.height = this.height
+    this.snakeUnit = this.width / 30
 
     this.initSnake() // 初始化贪吃蛇
     this.moveSnake()
 
-    this.timer = setInterval(_ => {
-      this.moveSnake()
-    }, 100)
+    // this.timer = setInterval(_ => {
+    //   this.moveSnake()
+    // }, 100)
 
     this.initFood() // 初始化食物
     this.addEventDocument()
   },
   methods: {
+    getInitFoodPlace() { // 获取食物的初始位置
+      const places = [...Array(30).keys()].map(_ => this.snakeUnit * _)
+
+      return {
+        x: places[~~(Math.random() * 30)],
+        y: places[~~(Math.random() * 30)]
+      }
+    },
     initFood() {
+      const {x, y} = this.getInitFoodPlace()
       let isEated = true
       const _this = this
       if (isEated) {
-        const foodRandomX = Math.random()
-        const foodRandomY = Math.random()
-        const ix = (foodRandomX * this.width - 14) + 7
-        const iy = (foodRandomY * this.height - 14) + 7
-        // console.log(this.width)
+        const ix = x
+        const iy = y
         this.ctx.beginPath()
         this.ctx.fillStyle = `red`
-        this.ctx.arc(ix, iy, 7, 0, Math.PI * 2, false)
+        this.ctx.arc(ix, iy, this.snakeUnit / 2, 0, Math.PI * 2, false)
         this.ctx.fill()
         this.ctx.closePath()
         this.foodIx = ix
@@ -87,12 +95,14 @@ export default {
         (function(i) {
           _this.snakeBlocks.push({
             id: ~~(random * 1000),
-            ix: 0,
-            iy: 7,
-            r: 7,
-            speed: 14,
+            ix: i * _this.snakeUnit,
+            iy: _this.snakeUnit / 2,
+            r: _this.snakeUnit / 2,
+            speed: _this.snakeUnit,
             render() {
               _this.ctx.beginPath()
+              console.log(i, this.ix);
+              console.log(i, this.iy);
               _this.ctx.fillStyle = '#444'
               _this.ctx.arc(this.ix, this.iy, this.r, 0, 2 * Math.PI, false)
               _this.ctx.fill()
@@ -136,11 +146,11 @@ export default {
       this.ctx.clearRect(0, 0, this.width, this.height)
       this.ctx.beginPath()
       this.ctx.fillStyle = 'red'
-      this.ctx.arc(this.foodIx, this.foodIy, 7, 0, 2 * Math.PI, false)
+      this.ctx.arc(this.foodIx, this.foodIy, this.snakeUnit / 2, 0, 2 * Math.PI, false)
       this.ctx.fill()
       this.ctx.closePath()
       const rect = {...this.head}
-      this.snakeBlocks.splice(1, 0, rect)
+      this.snakeBlocks.splice(1, 0, rect) // 将前面的头添加到现在的第二个
 
       if (this.haveEated()) {
         this.initFood()
@@ -166,10 +176,10 @@ export default {
       }
 
       if (
-        this.head.ix > this.width ||
-        this.head.ix < 0 ||
-        this.head.iy > this.height ||
-        this.head.iy < 0
+        this.head.ix >= this.width ||
+        this.head.ix <= 0 ||
+        this.head.iy >= this.height ||
+        this.head.iy <= 0
       ) {
         clearInterval(this.timer)
         this.showEndBox = true
@@ -180,7 +190,11 @@ export default {
       }
     },
     haveEated() {
-      if (Math.abs(this.head.ix - this.foodIx) < 5 && Math.abs(this.head.iy - this.foodIy) < 5) {
+      console.log('ix', this.head.ix);
+      console.log('fx', this.foodIx);
+      console.log('iy', this.head.iy);
+      console.log('fy', this.foodIy);
+      if (Math.abs(this.head.ix - this.foodIx) <= 0 && Math.abs(this.head.iy - this.foodIy) <= 0) {
         return true
       }
       return false
