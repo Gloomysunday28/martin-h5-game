@@ -1,12 +1,22 @@
 <template>
   <div class="c-snake__contain" ref="contain">
-    <canvas ref="canvas"></canvas>
+    <div class="c-snake__btn" v-if="!started">
+      <button class="c-teriral__start" @click="commonStart(false)">普通模式</button>
+      <button class="c-teriral__start" @click="commonStart(true)">开挂模式</button>
+    </div>
+    <canvas ref="canvas" v-else></canvas>
+    <div class="c-snake__control" v-if="isMobile">
+      <i class="iconfont c-snake__control__item c-snake__left" @click="changDirect('left')">&#xe602;</i>
+      <i class="iconfont c-snake__control__item c-snake__up"  @click="changDirect('up')">&#xe602;</i>
+      <i class="iconfont c-snake__control__item c-snake__right" @click="changDirect('right')">&#xe602;</i>
+      <i class="iconfont c-snake__control__item c-snake__down" @click="changDirect('down')">&#xe602;</i>
+    </div>
     <app-dialog :dialog-visiable.sync="showEndBox">
       <div class="c-end__body">
         <div class="c-end__background"></div>
         <div class="c-end__body">
           <div class="c-end__contain">
-            1
+            Game Over
           </div>
           <div class="c-snake__end">
             <martin-button class="c-snake__cancel" type="primary" size="small" @click="showEndBox = false">取消</martin-button>
@@ -23,6 +33,10 @@ export default {
   name: 'MartinSnake',
   data() {
     return {
+      isMobile: false,
+      isBT: false, // 是否开启变态模式
+      started: false,
+      speedTime: 100, // 初始速度时间
       snakeUnit: 0, // 贪吃蛇单个半径
       showEndBox: false,
       width: 0,
@@ -38,31 +52,13 @@ export default {
       head: null, // 蛇的头部
     }
   },
-  mounted() {
-    this.width = this.$refs.contain.clientWidth
-    this.height = this.$refs.contain.clientHeight
-    this.ctx = this.$refs.canvas.getContext('2d')
-    this.$refs.canvas.width = this.width
-    this.$refs.canvas.height = this.height
-    this.snakeUnit = this.width / 30
-
-    this.initSnake() // 初始化贪吃蛇
-    this.moveSnake()
-
-    // this.timer = setInterval(_ => {
-    //   this.moveSnake()
-    // }, 100)
-
-    this.initFood() // 初始化食物
-    this.addEventDocument()
-  },
   methods: {
     getInitFoodPlace() { // 获取食物的初始位置
       const places = [...Array(30).keys()].map(_ => this.snakeUnit * _)
 
       return {
-        x: places[~~(Math.random() * 30)],
-        y: places[~~(Math.random() * 30)]
+        x: places[~~(Math.random() * 30)] + this.snakeUnit / 2,
+        y: places[~~(Math.random() * 30)] + this.snakeUnit / 2 // 圆点在this.snakeUnit的一半和this.width - this.snakeUnit / 2之间
       }
     },
     initFood() {
@@ -88,6 +84,45 @@ export default {
         isEated = false
       }
     },
+    initStart() {
+      this.width = this.$refs.contain.clientWidth
+      this.height = this.$refs.contain.clientHeight
+      this.ctx = this.$refs.canvas.getContext('2d')
+      this.$refs.canvas.width = this.width
+      this.$refs.canvas.height = this.height
+      this.snakeUnit = this.width / 30
+
+      this.initSnake() // 初始化贪吃蛇
+      this.moveSnake()
+      this.timer = setInterval(_ => {
+        this.moveSnake()
+      }, this.speedTime)
+
+      this.initFood() // 初始化食物
+      if ('ontouchend' in window) {
+        this.isMobile = true
+      } else {
+        this.addEventDocument()
+      }
+    },
+
+    commonStart(isBT) {
+      this.started = true
+      this.isBT = isBT
+      this.$nextTick().then(() => {
+        this.initStart()
+      })
+    },
+    timeLazy() { // 惰函数
+      const oldTime = +new Date()
+      this.timeLazy = () => {
+        return {
+          oldTime,
+          newTime: +new Date()
+        }
+      }
+      return this.timeLazy
+    },
     initSnake() {
       const _this = this
       const random = Math.random()
@@ -95,14 +130,12 @@ export default {
         (function(i) {
           _this.snakeBlocks.push({
             id: ~~(random * 1000),
-            ix: i * _this.snakeUnit,
+            ix: _this.snakeUnit / 2 + i,
             iy: _this.snakeUnit / 2,
             r: _this.snakeUnit / 2,
             speed: _this.snakeUnit,
             render() {
               _this.ctx.beginPath()
-              console.log(i, this.ix);
-              console.log(i, this.iy);
               _this.ctx.fillStyle = '#444'
               _this.ctx.arc(this.ix, this.iy, this.r, 0, 2 * Math.PI, false)
               _this.ctx.fill()
@@ -112,9 +145,9 @@ export default {
         })(i)
       }
 
-      this.head = this.snakeBlocks[0]
+      this.head = this.snakeBlocks[0] // 将集合第一个引用地址复制给head
     },
-    addEventDocument() {
+    addEventDocument() { // PC
       // 给document添加控制事件
       let direct = ''
       const keyEvents = e => {
@@ -138,8 +171,21 @@ export default {
 
       document.onkeydown = e => {
         keyEvents(e)
-        this.direction = direct
+        this.changDirect(direct)
       }
+    },
+    changDirect(direct) {
+      if (this.isBT) {
+        this.direction = direct
+      } else {
+        if (this.judgeDirection(direct)) {
+          this.direction = direct
+        }
+      }
+    },
+    judgeDirection(direct) { // 判断方向
+      return (this.direction === 'right' && direct !== 'left') || (this.direction === 'left' && direct !== 'right') ||
+      (this.direction === 'up' && direct !== 'down') || (this.direction === 'down' && direct !== 'up')
     },
     // 移动贪吃蛇
     moveSnake() {
@@ -148,8 +194,25 @@ export default {
       this.ctx.fillStyle = 'red'
       this.ctx.arc(this.foodIx, this.foodIy, this.snakeUnit / 2, 0, 2 * Math.PI, false)
       this.ctx.fill()
-      this.ctx.closePath()
+      this.ctx.closePath() // 绘画食物
+
       const rect = {...this.head}
+
+      if (!this.isBT) { // 蛇的身体相撞, 游戏结束
+        const {
+          oldTime,
+          newTime
+        } = this.timeLazy()
+
+        if ((newTime - oldTime) / 1000 > 1) {
+          if (this.snakeBlocks.slice(1).find(_ => _.ix === rect.ix && rect.iy === _.iy)) {
+            clearInterval(this.timer)
+            this.showEndBox = true
+            return
+          }
+        }
+      }
+
       this.snakeBlocks.splice(1, 0, rect) // 将前面的头添加到现在的第二个
 
       if (this.haveEated()) {
@@ -176,25 +239,33 @@ export default {
       }
 
       if (
-        this.head.ix >= this.width ||
+        this.head.ix >= (this.width - this.snakeUnit / 2) ||
         this.head.ix <= 0 ||
-        this.head.iy >= this.height ||
+        this.head.iy >= (this.height - this.snakeUnit / 2) ||
         this.head.iy <= 0
       ) {
         clearInterval(this.timer)
         this.showEndBox = true
       }
 
-      for (var i = 0; i < this.snakeBlocks.length; i++) {
+      for (let i = 0; i < this.snakeBlocks.length; i++) {
         this.snakeBlocks[i].render()
       }
+
+      // if ((newTime - oldTime) / 1000 > 5 && !this.isBT) {
+      //   for (var i = 0; i < this.snakeBlocks.length; i++) {
+      //     for (var j = i; j < this.snakeBlocks.length; j++) {
+      //       if (this.snakeBlocks[i].ix === this.snakeBlocks[j].ix && this.snakeBlocks[i].iy === this.snakeBlocks[j].iy) {
+      //         clearInterval(this.timer)
+      //         this.showEndBox = true
+      //         return
+      //       }
+      //     }
+      //   }
+      // }
     },
     haveEated() {
-      console.log('ix', this.head.ix);
-      console.log('fx', this.foodIx);
-      console.log('iy', this.head.iy);
-      console.log('fy', this.foodIy);
-      if (Math.abs(this.head.ix - this.foodIx) <= 0 && Math.abs(this.head.iy - this.foodIy) <= 0) {
+      if (Math.abs(this.head.ix - this.foodIx) <= this.snakeUnit / 2 && Math.abs(this.head.iy - this.foodIy) <= this.snakeUnit / 2) {
         return true
       }
       return false
@@ -210,6 +281,40 @@ export default {
 </script>
 
 <style scoped lang='less'>
+.c-snake__control {
+  position: absolute;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%);
+  opacity: .6;
+  .c-snake__control__item {
+    font-size: 80px;
+  }
+  .c-snake__left {
+    position: absolute;
+    transform: rotate(.25turn) translateY(-50%);
+    left: -150px;
+    bottom: 50%;
+  }
+  .c-snake__right {
+    position: absolute;
+    transform: rotate(-.25turn) translateY(-50%);
+    right: -150px;
+    bottom: 50%;
+  }
+  .c-snake__down {
+    position: absolute;
+    transform: translateX(-50%);
+    left: 50%;
+    bottom: -60px;
+  }
+  .c-snake__up {
+    position: absolute;
+    transform: rotate(-.5turn) translateX(50%);
+    left: 0;
+    top: -150px;
+  }
+}
 .c-snake__content {
   position: relative;
   .c-snake__eyes {
@@ -302,6 +407,12 @@ export default {
 
 .c-end__contain {
   flex: 1;
+  font-size: 42px;
+  color: red;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .c-snake__end {
@@ -313,5 +424,19 @@ export default {
 }
 .c-snake__cancel {
   margin-right: 10px;
+}
+
+.c-teriral__start {
+  font-size: 32px;
+}
+
+.c-teriral__start:nth-child(1) {
+  left: 33%;
+}
+.c-teriral__start:nth-child(2) {
+  left: 66%;
+  color: palevioletred;
+  font-weight: bold;
+  background: rgba(120, 190, 247, 0.867);
 }
 </style>
