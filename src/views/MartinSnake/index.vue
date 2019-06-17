@@ -288,31 +288,31 @@ export default {
   transform: translateX(-50%);
   opacity: .6;
   .c-snake__control__item {
-    font-size: 80px;
+    font-size: 120px;
   }
   .c-snake__left {
     position: absolute;
     transform: rotate(.25turn) translateY(-50%);
-    left: -150px;
+    left: -220px;
     bottom: 50%;
   }
   .c-snake__right {
     position: absolute;
     transform: rotate(-.25turn) translateY(-50%);
-    right: -150px;
+    right: -220px;
     bottom: 50%;
   }
   .c-snake__down {
     position: absolute;
     transform: translateX(-50%);
     left: 50%;
-    bottom: -60px;
+    bottom: -90px;
   }
   .c-snake__up {
     position: absolute;
     transform: rotate(-.5turn) translateX(50%);
     left: 0;
-    top: -150px;
+    top: -210px;
   }
 }
 .c-snake__content {
